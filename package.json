@@ -1,6 +1,6 @@
 {
   "name": "rc-slider",
-  "version": "8.6.1-beta",
+  "version": "8.6.1",
   "description": "Slider UI component for React",
   "keywords": [
     "react",
@@ -25,7 +25,8 @@
     "dist"
   ],
   "license": "MIT",
-  "main": "./dist/rc-slider.js",
+  "main": "./lib/index.js",
+  "module": "./es/index",
   "style": "./assets/index.css",
   "config": {
     "port": 8005,
