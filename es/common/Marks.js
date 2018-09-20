@@ -1,4 +1,5 @@
 import _extends from 'babel-runtime/helpers/extends';
+import _defineProperty from 'babel-runtime/helpers/defineProperty';
 import React from 'react';
 import classNames from 'classnames';
 
@@ -10,7 +11,8 @@ var Marks = function Marks(_ref) {
       upperBound = _ref.upperBound,
       lowerBound = _ref.lowerBound,
       max = _ref.max,
-      min = _ref.min;
+      min = _ref.min,
+      onClickLabel = _ref.onClickLabel;
 
   var marksKeys = Object.keys(marks);
   var marksCount = marksKeys.length;
@@ -31,7 +33,7 @@ var Marks = function Marks(_ref) {
     }
 
     var isActive = !included && point === upperBound || included && point <= upperBound && point >= lowerBound;
-    var markClassName = classNames((_classNames = {}, _classNames[className + '-text'] = true, _classNames[className + '-text-active'] = isActive, _classNames));
+    var markClassName = classNames((_classNames = {}, _defineProperty(_classNames, className + '-text', true), _defineProperty(_classNames, className + '-text-active', isActive), _classNames));
 
     var bottomStyle = {
       marginBottom: '-50%',
@@ -51,7 +53,13 @@ var Marks = function Marks(_ref) {
       {
         className: markClassName,
         style: markStyle,
-        key: point
+        key: point,
+        onMouseDown: function onMouseDown(e) {
+          return onClickLabel(e, point);
+        },
+        onTouchStart: function onTouchStart(e) {
+          return onClickLabel(e, point);
+        }
       },
       markLabel
     );
