@@ -170,6 +170,12 @@ export default function createSlider(Component) {
       /* eslint-enable no-unused-expressions */
     }
 
+    onMouseUp = () => {
+      if (this.handlesRefs[this.prevMovedHandleIndex]) {
+        this.handlesRefs[this.prevMovedHandleIndex].clickFocus();
+      }
+    }
+
     onMouseMove = (e) => {
       if (!this.sliderRef) {
         this.onEnd();
@@ -251,6 +257,11 @@ export default function createSlider(Component) {
       this.handlesRefs[index] = handle;
     }
 
+    onClickMarkLabel = (e, value) => {
+      e.stopPropagation();
+      this.onChange({ value });
+    }
+
     render() {
       const {
         prefixCls,
@@ -284,6 +295,7 @@ export default function createSlider(Component) {
           className={sliderClassName}
           onTouchStart={disabled ? noop : this.onTouchStart}
           onMouseDown={disabled ? noop : this.onMouseDown}
+          onMouseUp={disabled ? noop : this.onMouseUp}
           onKeyDown={disabled ? noop : this.onKeyDown}
           onFocus={disabled ? noop : this.onFocus}
           onBlur={disabled ? noop : this.onBlur}
@@ -314,6 +326,7 @@ export default function createSlider(Component) {
           {handles}
           <Marks
             className={`${prefixCls}-mark`}
+            onClickLabel={disabled ? noop : this.onClickMarkLabel}
             vertical={vertical}
             marks={marks}
             included={included}

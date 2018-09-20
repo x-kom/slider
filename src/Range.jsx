@@ -3,7 +3,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import shallowEqual from 'shallowequal';
-import warning from 'warning';
 import Track from './common/Track';
 import createSlider from './common/createSlider';
 import * as utils from './utils';
@@ -64,8 +63,12 @@ class Range extends React.Component {
     if (nextBounds.length === bounds.length && nextBounds.every((v, i) => v === bounds[i])) return;
 
     this.setState({ bounds: nextBounds });
+
     if (bounds.some(v => utils.isValueOutOfRange(v, nextProps))) {
-      this.props.onChange(nextBounds);
+      const newValues = value.map((v) => {
+        return utils.ensureValueInRange(v, nextProps);
+      });
+      this.props.onChange(newValues);
     }
   }
 
@@ -94,53 +97,51 @@ class Range extends React.Component {
     this.startPosition = position;
 
     const closestBound = this.getClosestBound(value);
-    const boundNeedMoving = this.getBoundNeedMoving(value, closestBound);
+    this.prevMovedHandleIndex = this.getBoundNeedMoving(value, closestBound);
 
     this.setState({
-      handle: boundNeedMoving,
-      recent: boundNeedMoving,
+      handle: this.prevMovedHandleIndex,
+      recent: this.prevMovedHandleIndex,
     });
 
-    const prevValue = bounds[boundNeedMoving];
+    const prevValue = bounds[this.prevMovedHandleIndex];
     if (value === prevValue) return;
 
     const nextBounds = [...state.bounds];
-    nextBounds[boundNeedMoving] = value;
+    nextBounds[this.prevMovedHandleIndex] = value;
     this.onChange({ bounds: nextBounds });
   }
 
   onEnd = () => {
-    this.setState({ handle: null });
     this.removeDocumentEvents();
     this.props.onAfterChange(this.getValue());
   }
 
   onMove(e, position) {
     utils.pauseEvent(e);
-    const props = this.props;
     const state = this.state;
 
     const value = this.calcValueByPos(position);
     const oldValue = state.bounds[state.handle];
     if (value === oldValue) return;
 
-    const nextBounds = [...state.bounds];
-    nextBounds[state.handle] = value;
-    let nextHandle = state.handle;
-    if (props.pushable !== false) {
-      this.pushSurroundingHandles(nextBounds, nextHandle);
-    } else if (props.allowCross) {
-      nextBounds.sort((a, b) => a - b);
-      nextHandle = nextBounds.indexOf(value);
-    }
-    this.onChange({
-      handle: nextHandle,
-      bounds: nextBounds,
-    });
+    this.moveTo(value);
   }
 
-  onKeyboard() {
-    warning(true, 'Keyboard support is not yet supported for ranges.');
+  onKeyboard(e) {
+    const valueMutator = utils.getKeyboardValueMutator(e);
+
+    if (valueMutator) {
+      utils.pauseEvent(e);
+      const { state, props } = this;
+      const { bounds, handle } = state;
+      const oldValue = bounds[handle];
+      const mutatedValue = valueMutator(oldValue, props);
+      const value = this.trimAlignValue(mutatedValue);
+      if (value === oldValue) return;
+      const isFromKeyboardEvent = true;
+      this.moveTo(value, isFromKeyboardEvent);
+    }
   }
 
   getValue() {
@@ -202,6 +203,32 @@ class Range extends React.Component {
       this._getPointsCache = { marks, step, points };
     }
     return this._getPointsCache.points;
+  }
+
+  moveTo(value, isFromKeyboardEvent) {
+    const { state, props } = this;
+    const nextBounds = [...state.bounds];
+    nextBounds[state.handle] = value;
+    let nextHandle = state.handle;
+    if (props.pushable !== false) {
+      this.pushSurroundingHandles(nextBounds, nextHandle);
+    } else if (props.allowCross) {
+      nextBounds.sort((a, b) => a - b);
+      nextHandle = nextBounds.indexOf(value);
+    }
+    this.onChange({
+      handle: nextHandle,
+      bounds: nextBounds,
+    });
+    if (isFromKeyboardEvent) {
+      // known problem: because setState is async,
+      // so trigger focus will invoke handler's onEnd and another handler's onStart too early,
+      // cause onBeforeChange and onAfterChange receive wrong value.
+      // here use setState callback to hack，but not elegant
+      this.setState({}, () => {
+        this.handlesRefs[nextHandle].focus();
+      });
+    }
   }
 
   pushSurroundingHandles(bounds, handle) {
@@ -315,6 +342,7 @@ class Range extends React.Component {
         [handleClassName]: true,
         [`${handleClassName}-${i + 1}`]: true,
       }),
+      prefixCls,
       vertical,
       offset: offsets[i],
       value: v,
